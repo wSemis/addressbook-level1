@@ -917,13 +917,15 @@ public class AddressBook {
      */
     private static Optional<String[]> decodePersonFromString(String encoded) {
         // check that we can extract the parts of a person from the encoded string
-        if (!isPersonDataExtractableFrom(encoded)) {
-            return Optional.empty();
-        }
+//        if (!isPersonDataExtractableFrom(encoded)) {
+//            return Optional.empty();
+//        }
+        int[] indexOfPhone = findPhoneNumberFromString(encoded);
+        int[] indexOfEmail = findEmailFromString(encoded);
         final String[] decodedPerson = makePersonFromData(
-                extractNameFromPersonString(encoded),
-                extractPhoneFromPersonString(encoded),
-                extractEmailFromPersonString(encoded)
+                extractNameFromPersonString(encoded,indexOfEmail,indexOfPhone),
+                extractPhoneFromPersonString(encoded,indexOfPhone),
+                extractEmailFromPersonString(encoded,indexOfEmail)
         );
         // check that the constructed person is valid
         return isPersonDataValid(decodedPerson) ? Optional.of(decodedPerson) : Optional.empty();
@@ -969,13 +971,62 @@ public class AddressBook {
      * @param encoded person string representation
      * @return name argument
      */
-    private static String extractNameFromPersonString(String encoded) {
-        final int indexOfPhonePrefix = encoded.indexOf(PERSON_DATA_PREFIX_PHONE);
-        final int indexOfEmailPrefix = encoded.indexOf(PERSON_DATA_PREFIX_EMAIL);
+    private static String extractNameFromPersonString(String encoded,int[] indexOfEmail, int[] indexOfPhone) {
+        final int indexOfPhonePrefix = indexOfPhone[0];
+        final int indexOfEmailPrefix = indexOfEmail[0];
         // name is leading substring up to first data prefix symbol
         int indexOfFirstPrefix = Math.min(indexOfEmailPrefix, indexOfPhonePrefix);
         return encoded.substring(0, indexOfFirstPrefix).trim();
     }
+
+    private static int[] findPhoneNumberFromString(String encoded){
+        int startOfPhoneNumber = encoded.length();
+        int endOfPhoneNumber = encoded.length();
+        String[] split = encoded.split("\\s+");
+        String PhoneNumber = null;
+        for (String s : split){
+            boolean isNumber = true;
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                if (c >= '0' && c <= '9' || c == '-' || c == '+') {
+                    //Do Nothing
+                }else{
+                    isNumber = false;
+                    break;
+                }
+            }
+            if (isNumber){
+                PhoneNumber = s;
+                break;
+            }
+        }
+        if (PhoneNumber != null){
+            startOfPhoneNumber = encoded.indexOf(PhoneNumber);
+            endOfPhoneNumber = startOfPhoneNumber + PhoneNumber.length();
+        }
+        int[] result =  {startOfPhoneNumber,endOfPhoneNumber};
+        return result;
+    }
+
+    private static int[] findEmailFromString(String encoded){
+        int startOfEmail = encoded.length();
+        int endOfEmail = encoded.length();
+        String[] split = encoded.split("\\s+");
+        String Email = null;
+        for (String s : split){
+                if (s.indexOf('@') != -1) {
+                    Email = s;
+                    break;
+                }
+        }
+        if (Email != null){
+            startOfEmail = encoded.indexOf(Email);
+            endOfEmail = startOfEmail + Email.length();
+        }
+        int[] result =  {startOfEmail,endOfEmail};
+        return result;
+    }
+
 
     /**
      * Extracts substring representing phone number from person string representation
@@ -983,21 +1034,26 @@ public class AddressBook {
      * @param encoded person string representation
      * @return phone number argument WITHOUT prefix
      */
-    private static String extractPhoneFromPersonString(String encoded) {
-        final int indexOfPhonePrefix = encoded.indexOf(PERSON_DATA_PREFIX_PHONE);
-        final int indexOfEmailPrefix = encoded.indexOf(PERSON_DATA_PREFIX_EMAIL);
+    private static String extractPhoneFromPersonString(String encoded,int[] indexOfPhone) {
+        String PhoneNumber = "None";
 
-        // phone is last arg, target is from prefix to end of string
-        if (indexOfPhonePrefix > indexOfEmailPrefix) {
-            return removePrefixSign(encoded.substring(indexOfPhonePrefix, encoded.length()).trim(),
-                    PERSON_DATA_PREFIX_PHONE);
-
-        // phone is middle arg, target is from own prefix to next prefix
-        } else {
-            return removePrefixSign(
-                    encoded.substring(indexOfPhonePrefix, indexOfEmailPrefix).trim(),
-                    PERSON_DATA_PREFIX_PHONE);
+        if (indexOfPhone[0] != encoded.length()){
+            PhoneNumber = encoded.substring(indexOfPhone[0],indexOfPhone[1]).trim();
         }
+
+        return  PhoneNumber;
+//
+//        // phone is last arg, target is from prefix to end of string
+//        if (indexOfPhonePrefix > indexOfEmailPrefix) {
+//            return removePrefixSign(encoded.substring(indexOfPhonePrefix, encoded.length()).trim(),
+//                    PERSON_DATA_PREFIX_PHONE);
+//
+//        // phone is middle arg, target is from own prefix to next prefix
+//        } else {
+//            return removePrefixSign(
+//                    encoded.substring(indexOfPhonePrefix, indexOfEmailPrefix).trim(),
+//                    PERSON_DATA_PREFIX_PHONE);
+//        }
     }
 
     /**
@@ -1006,21 +1062,28 @@ public class AddressBook {
      * @param encoded person string representation
      * @return email argument WITHOUT prefix
      */
-    private static String extractEmailFromPersonString(String encoded) {
-        final int indexOfPhonePrefix = encoded.indexOf(PERSON_DATA_PREFIX_PHONE);
-        final int indexOfEmailPrefix = encoded.indexOf(PERSON_DATA_PREFIX_EMAIL);
-
-        // email is last arg, target is from prefix to end of string
-        if (indexOfEmailPrefix > indexOfPhonePrefix) {
-            return removePrefixSign(encoded.substring(indexOfEmailPrefix, encoded.length()).trim(),
-                    PERSON_DATA_PREFIX_EMAIL);
-
-        // email is middle arg, target is from own prefix to next prefix
-        } else {
-            return removePrefixSign(
-                    encoded.substring(indexOfEmailPrefix, indexOfPhonePrefix).trim(),
-                    PERSON_DATA_PREFIX_EMAIL);
+    private static String extractEmailFromPersonString(String encoded, int[] indexOfEmail) {
+        String Email = "None";
+        if (indexOfEmail[0] != encoded.length()){
+            Email = encoded.substring(indexOfEmail[0], indexOfEmail[1]);
         }
+
+        return Email;
+
+//        final int indexOfPhonePrefix = encoded.indexOf(PERSON_DATA_PREFIX_PHONE);
+//        final int indexOfEmailPrefix = encoded.indexOf(PERSON_DATA_PREFIX_EMAIL);
+//
+//        // email is last arg, target is from prefix to end of string
+//        if (indexOfEmailPrefix > indexOfPhonePrefix) {
+//            return removePrefixSign(encoded.substring(indexOfEmailPrefix, encoded.length()).trim(),
+//                    PERSON_DATA_PREFIX_EMAIL);
+//
+//        // email is middle arg, target is from own prefix to next prefix
+//        } else {
+//            return removePrefixSign(
+//                    encoded.substring(indexOfEmailPrefix, indexOfPhonePrefix).trim(),
+//                    PERSON_DATA_PREFIX_EMAIL);
+//        }
     }
 
     /**
